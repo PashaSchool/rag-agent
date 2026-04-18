@@ -25,6 +25,7 @@ model documents {
     accounts      Account[]
     sessions      Session[]
     createdAt     DateTime  @default(now())
+    chatSession   ChatSession[]
   }
 
   model Account {
@@ -60,3 +61,15 @@ model documents {
 
     @@unique([identifier, token])
   }
+
+model ChatSession {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  messages  Json
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

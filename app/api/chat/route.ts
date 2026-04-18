@@ -9,9 +9,12 @@ import {
 } from "ai";
 import z from "zod";
 import { supabase } from "../../../lib/supabase";
+import { prisma } from "../../../lib/prisma";
+import { auth } from "../auth";
 
 export const POST = async (request: Request) => {
   try {
+    const session = await auth();
     const { messages }: { messages: UIMessage[] } = await request.json();
 
     const message = messages.at(-1);
@@ -133,7 +136,25 @@ export const POST = async (request: Request) => {
       },
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      onFinish: async ({ messages: finalMessages }) => {
+        const firstUserMessage = messages.find((m) => m.role === "user");
+        const title =
+          firstUserMessage?.parts
+            .filter((p) => p.type === "text")
+            .map((p) => p.text)
+            .join(" ")
+            .slice(0, 100) ?? "Untitled chat";
+
+        await prisma.chatSession.create({
+          data: {
+            userId: session?.user.id,
+            title,
+            messages: [...messages, ...finalMessages],
+          },
+        });
+      },
+    });
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

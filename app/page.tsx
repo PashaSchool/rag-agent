@@ -1,12 +1,14 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useState, FormEvent, ChangeEvent, useEffect } from "react";
+import { useState, FormEvent, ChangeEvent, useEffect, useRef } from "react";
+import { prisma } from "../lib/prisma";
 
 export default function Home() {
   const [context, setContext] = useState("");
   const [isUploading, toggleUploading] = useState(false);
   const [uploadingResult, setUploadingResult] = useState("");
+  const chatSessionInitialized = useRef(false);
 
   const { messages, sendMessage, status } = useChat();
 
@@ -51,13 +53,24 @@ export default function Home() {
     toggleUploading(false);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    if (!chatSessionInitialized.current) {
+      chatSessionInitialized.current = true;
+
+      await fetch("/api/chat_session", {
+        method: "POST",
+        data: {
+          title: context,
+        },
+      });
+    }
+
     sendMessage({
       text: context,
       metadata: {
-        filter_filename:
-          "DET-20260216-ovlovo_ncat_Port_Scanning_on_EDR_Lab_Hosts_Beni-20260415 (2).pdf",
+        filter_filename: "",
       },
     });
     setContext("");
